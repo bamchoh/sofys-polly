@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -18,12 +17,13 @@ import (
 	youtube "google.golang.org/api/youtube/v3"
 )
 
-type AwsCredential struct {
-	AccessKey string `yaml:"access_key"`
-	SecretKey string `yaml:"secret_key"`
+type AppConfig struct {
+	AccessKey  string `yaml:"access_key"`
+	SecretKey  string `yaml:"secret_key"`
+	SofTalkDir string `yaml:"softalk_dir"`
 }
 
-func Load(filename string) (*AwsCredential, error) {
+func Load(filename string) (*AppConfig, error) {
 	var err error
 	f, err := os.Open(filename)
 	if err != nil {
@@ -37,13 +37,13 @@ func Load(filename string) (*AwsCredential, error) {
 		return nil, err
 	}
 
-	var aws AwsCredential
-	err = yaml.Unmarshal(data, &aws)
+	var config AppConfig
+	err = yaml.Unmarshal(data, &config)
 	if err != nil {
 		return nil, err
 	}
 
-	return &aws, err
+	return &config, err
 }
 
 func setLog(prefix string) *log.Logger {
@@ -62,16 +62,21 @@ func main() {
 		logger.Println(err)
 	}
 
-	p := pollydent.NewPollydent(
-		ac.AccessKey,
-		ac.SecretKey,
-		nil,
-	)
+	var p TextToSpeacher
+	if ac.SofTalkDir != "" {
+		p = NewSofTalk(ac.SofTalkDir)
+	} else {
+		p = pollydent.NewPollydent(
+			ac.AccessKey,
+			ac.SecretKey,
+			nil,
+		)
+	}
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		txt := scanner.Text()
-		fmt.Println(txt)
+		// fmt.Println(txt)
 		dec := json.NewDecoder(strings.NewReader(txt))
 		msg := new(youtube.LiveChatMessage)
 		err := dec.Decode(msg)
@@ -81,7 +86,7 @@ func main() {
 		}
 		reg := regexp.MustCompile("https?://.*")
 		readContent := reg.ReplaceAllString(msg.Snippet.DisplayMessage, "")
-		go p.ReadAloud(readContent)
+		p.ReadAloud(readContent)
 	}
 
 	if err := scanner.Err(); err != nil {
