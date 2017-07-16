@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -76,7 +77,7 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		txt := scanner.Text()
-		// fmt.Println(txt)
+		fmt.Println(txt)
 		dec := json.NewDecoder(strings.NewReader(txt))
 		msg := new(youtube.LiveChatMessage)
 		err := dec.Decode(msg)
